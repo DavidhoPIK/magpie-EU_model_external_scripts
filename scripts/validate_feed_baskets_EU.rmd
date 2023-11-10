@@ -1,0 +1,55 @@
+---
+title: "Untitled"
+output: 
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(mrcommons)
+```
+
+
+```{r}
+mappingEU <- toolGetMapping("~/MAgPIEG/magpieEU/magpie-EU/input/regionmappingEU6.csv")
+
+FAOMassbalance <- calcOutput("FAOmassbalance", aggregate = FALSE)
+aggFAOMassbalance <- madrat::toolAggregate(FAOMassbalance, mappingEU)
+
+animalCounts <- readSource("FAO_online", "LiveHead")
+animalCountsAgg <- madrat::toolAggregate(animalCounts, mappingEU)
+
+animalCountsProcessed <- calcOutput("AnimalStocks", aggregate = FALSE)
+aggAnimalCountsProcessed <- madrat::toolAggregate(animalCountsProcessed, mappingEU)
+
+EU_reg <- c("EUN", "EUS", "EUW", "EUC", "DEU")
+
+```
+
+```{r}
+aggChickenProd <- aggFAOMassbalance[,,"production"][,,"livst_chick"][,,"dm"]
+chickCount <- animalCountsAgg[,,"1057|Chickens"]
+chickProductivity <- aggChickenProd[,"y2000",]/chickCount[,"y2000",]
+chickProductivity[EU_reg,,]
+
+aggEggProd <- aggFAOMassbalance[,,"production"][,,"livst_egg"][,,"dm"]
+chickCount <- animalCountsAgg[,,"1057|Chickens"]
+eggProductivity <- aggEggProd[,"y2000",]/chickCount[,"y2000",]
+eggProductivity[EU_reg,,]
+
+aggMilkProd <- aggFAOMassbalance[,,"production"][,,"livst_milk"][,,"dm"]
+dairyCows <- aggAnimalCountsProcessed[,,"dairy cows"]
+milkProductivity <- aggMilkProd[,"y2000",]/dairyCows[,"y2000",]
+milkProductivity[EU_reg,,]
+
+aggRumProd <- aggFAOMassbalance[,,"production"][,,"livst_rum"][,,"dm"]
+cattle <- animalCountsAgg[,,"866|Cattle.stock"]
+cattleProductivity <- aggRumProd[,"y2000",]/cattle[,"y2000",]
+cattleProductivity[EU_reg,,]
+
+aggPigProd <- aggFAOMassbalance[,,"production"][,,"livst_pig"][,,"dm"]
+pigs <- animalCountsAgg[,,"1034|Pigs"]
+pigProductivity <- aggPigProd[,"y2000",]/pigs[,"y2000",]
+pigProductivity[EU_reg,,]
+
+```

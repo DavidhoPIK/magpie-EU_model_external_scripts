@@ -1,0 +1,129 @@
+
+Define functions
+```{r}
+
+library(tidyr)
+library(magrittr)
+
+# get all filenames in the specified directory that match the specified pattern
+get_relevant_calib_filenames <- function(directory =  "/p/projects/landuse/data/input/calibration", 
+                                         string_to_match = "calibtration_testing_DavidH", 
+                                         recursive =FALSE) {
+  # List all files in the directory
+  all_files <- list.files(directory, full.names = TRUE, recursive = recursive)
+  
+  # Filter files that contain the string "DavidH" in the filename
+  matched_files <- grep(string_to_match, all_files, value = TRUE)
+  
+  return(matched_files)
+}
+
+# extracts a shorter name from the filename
+extract_run_name_from_filename <- function(filename) {
+  
+  # cut off the begiining of the filename
+  run_name <- stringr::str_extract(filename, "(?<=DavidH_).*")
+
+  # remove thes string indication that the run used yield calibration 
+  run_name <- stringr::str_remove(run_name, "with_yld_calib_")
+
+  # remove ending
+  run_name <- stringr::str_remove(run_name, ".tgz")
+  
+  return(run_name)
+}
+
+# reads the calibration factors from the tar.gz files and returns a list of dataframes
+read_calibration_factors_as_list_of_dataframes <- function(filename_list, keep_calibration_fac_tmp_dir =F, extract_shorter_names) {
+  dir <- ".__calibration_factors_tmp/"
+  if (file.exists(dir)) {
+    unlink(dir, recursive = TRUE)
+  }
+  dataframe_list <- NULL
+  for(i in seq_along(filename_list)) {
+    if(extract_shorter_names) {
+      run_name <- extract_run_name_from_filename(filename_list[i])
+    } else {
+      run_name <- filename_list[i]
+    }
+    untar(filename_list[i], exdir = paste0("./", dir, run_name) )
+    calib_factors <- read.csv(paste0("./", dir, run_name, "/f14_yld_calib.csv"),
+                                    comment.char = "*")
+    names(calib_factors)[1] <- "region"
+    # add the entry to the list and have the name of the list entry be the run name
+    dataframe_list[[run_name]] <- calib_factors
+  }
+  if(!keep_calibration_fac_tmp_dir) {
+    unlink(dir, recursive = TRUE)
+  }
+  return(dataframe_list)
+}
+ 
+```
+
+
+Read calibration factors
+```{r}
+df_list <- get_relevant_calib_filenames(string_to_match="lccc") %>% read_calibration_factors_as_list_of_dataframes(extract_shorter_names=F)
+
+```
+
+
+cost factors
+```{r}
+library(ggplot2)
+library(dplyr)
+
+run <- 3
+
+runname <- names(df_list[run])
+# extract everything following lccc from the runname
+runname <- gsub(".*lccc--", "", runname)
+runname <- gsub("--with_landCC_calib", "", runname)
+runname <- gsub(".tgz", "", runname)
+
+df <- df_list[[run]]
+df <- df %>% mutate(year = region)
+
+p <- ggplot(df, aes(x = as.numeric(sub("y", "", year)), y = cost)) +
+  geom_hline(yintercept = 1, color = "#919191", size = 2) +
+  geom_line(size = 2) +
+  labs(x = "Year", y = "Cost factor", title = "Cost factor by region") +
+  facet_wrap(~`dummy.1`, ncol = 2) +
+  theme(text = element_text(size = 30), line = element_line(size = 1.8))
+
+# add runname in subtitle
+p <- p + labs(subtitle = runname)
+
+p
+```
+
+
+reward factors
+```{r}
+library(ggplot2)
+library(dplyr)
+
+run <- 3
+
+runname <- names(df_list[run])
+# extract everything following lccc from the runname
+runname <- gsub(".*lccc--", "", runname)
+runname <- gsub("--with_landCC_calib", "", runname)
+runname <- gsub(".tgz", "", runname)
+
+df <- df_list[[run]]
+df <- df %>% mutate(year = region)
+
+p <- ggplot(df, aes(x = as.numeric(sub("y", "", year)), y = reward)) +
+  geom_hline(yintercept = 0, color = "#919191", size = 2) +
+  geom_line(size = 2) +
+  labs(x = "Year", y = "Reward factor", title = "Reward factor by region") +
+  facet_wrap(~`dummy.1`, ncol = 2) +
+  theme(text = element_text(size = 30), line = element_line(size = 1.8))
+
+# add runname in subtitle
+p <- p + labs(subtitle = runname)
+
+p
+```
